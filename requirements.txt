@@ -1,3 +1,5 @@
+# bash command to install requirements.txt: pip install -r requirements.txt
+# bash command to make/update requirements.txt: pip freeze > requirements.txt
 alabaster==0.7.12
 Babel==2.8.0
 certifi==2020.6.20
