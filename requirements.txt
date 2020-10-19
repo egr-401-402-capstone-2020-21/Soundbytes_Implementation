@@ -1,2 +1,4 @@
+# bash command to install requirements.txt: pip install -r requirements.txt
+# bash command to make/update requirements.txt: pip freeze > requirements.txt
 scikit-learn==0.23.2
 pandas~=1.1.3
