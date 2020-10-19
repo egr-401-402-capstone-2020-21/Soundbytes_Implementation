@@ -1,6 +1,5 @@
 import itertools
 from typing import List, Optional, Any
-from pandas import NDFrame
 from sklearn.model_selection import train_test_split
 
 
@@ -38,7 +37,7 @@ class ModelWrapper:
     :param test_percent: the percentage of the dataset that will be used to test and score the model
     """
 
-    def __int__(self, model_class: type, dataset: NDFrame, train_percent: float = .80, test_percent: float = .20,
+    def __int__(self, model_class: type, dataset, train_percent: float = .80, test_percent: float = .20,
                 random_state: int = 42):
         self.model_class = model_class
         self.dataset = dataset
