@@ -1,44 +1,112 @@
-from typing import List, Dict
+import itertools
+from typing import List, Optional, Any
+from pandas import NDFrame
+from sklearn.model_selection import train_test_split
+
+
+class _KVPair:
+    """
+    _KVPair is a private helper class for ModelWrapper, the class allows for easy access to values without needing the
+    key. The easy access is why a dictionary could not be used
+
+    :param key: The "key" between the two objects associated with the object
+    :param value: The "value" between the two objects associated with the object, used to do all of comparing
+    """
+
+    def __init__(self, key: Any, value: Any):
+        self.key = key
+        self.value = value
+
+    def __ge__(self, other):
+        return self.value > other.value
+
+    def __eq__(self, other):
+        return self.value == other.value
+
+    def __str__(self):
+        return f'{self.value} : {self.value}'
 
 
 class ModelWrapper:
     """
-    This is a class for mathematical operations on complex numbers.
+    ModelWrapper will wrap around AI/ML Models from different packages and will allows th user to run various different
+    tests.
 
-    Attributes:
-        model : The model that will be wrapped around.
-        dataset : The dataset the model will be trained with and tested.
-        train_percent (float): the percentage of the dataset
-
+    :param model_class: The model_class that will be wrapped around.
+    :param dataset: The dataset the model will be trained with and tested.
+    :param train_percent: the percentage of the dataset that will be used to train the model
+    :param test_percent: the percentage of the dataset that will be used to test and score the model
     """
 
-    def __int__(self, model, dataset, train_percent: float = .80, test_percent: float = .20):
-        self.model = model
+    def __int__(self, model_class: type, dataset: NDFrame, train_percent: float = .80, test_percent: float = .20,
+                random_state: int = 42):
+        self.model_class = model_class
         self.dataset = dataset
-        self.train_percent = train_percent
-        self.test_percent = test_percent
+        self._best_pair = None
 
-    # TODO add docstring
-    def score(self) -> Dict[tuple, float]:
-        """"""
-        pass
+        # random_sate allows for same results to be achieved everytime
+        self._train_x, self._test_x, self._train_y, self._test_y = train_test_split(dataset, test_size=test_percent,
+                                                                                    random_state=random_state)
 
-    # TODO add docstring
-    def explore(self, c: List[float], gamma: List[float], result_size: int = 10) -> Dict[tuple, float]:
-        """"""
-        pass
+    def score(self) -> Optional[Any]:
+        """
+        This function will score the currently wrapped model.
 
-    def _explore_helper(self, c: List[float], gamma: List[float], result_size: int = 10) -> Dict[tuple, float]:
-        """"""
-        pass
+        :return: A single mapping of the parameters in a tuple mapped to the highest score the model has reached
+        """
+        return self._best_pair
 
+    def explore(self, result_size: int = float('inf'), **kwargs) -> List[_KVPair]:
+        """
+        Function which completely trains the given model with the given dataset. Composed of various parameters for
+        testing and fine-tuning purposes.
 
+        :param c_list: A list of c values to be tested with
+        :param gamma_list: A list of gamma values to be tested with
+        :param result_size: the max size of the returned list
+        :return: A sorted list of size result_size with mappings of the params used to obtain the mapped score sorted
+            by the mapped score
+        """
 
+        explore_results = self._explore_helper(**kwargs)
+        count = -1
+        results = []
+        for y in sorted(explore_results):
+            count += 1
+            if count < result_size:
+                results.append(y)
+            else:
+                return results
 
+        return results
 
-"""
+    def _explore_helper(self, **kwargs) -> List[_KVPair]:
+        """
+        Function which computes values after completing training iterations based on the given model with the given
+        dataset
 
-AI/ML Algorithm Analysis
-Chase Crossley, Rigoberto Gonzalez, Jacob Nona and, Timothy Roe
+        :param kwargs: A dictionary where the key is the name of the parameter and the value is a list of all values to
+        be explored
+        """
 
-"""
+        unsorted_results = []
+
+        list_of_possible_args = []
+        for param_label, param_values in kwargs.items():
+            list_of_possible_args.append([{param_label: x} for x in param_values])
+
+        for param_set in itertools.product(*list_of_possible_args):
+            params = {}
+            for pair in param_set:
+                params.update(pair)
+
+            model = self.model_class(**params)
+            model.fit(self._train_x, self._test_y)
+            new_pair = _KVPair(params, self.model.score(self._test_x, self._test_y))
+
+            if not self._best_pair or new_pair > self._best_pair:
+                self._best_pair = new_pair
+
+            unsorted_results.append(new_pair)
+
+        return unsorted_results
